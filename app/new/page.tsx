@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { getRole } from "@/lib/roles";
+import { getCurrentUserRole } from "@/lib/db/users";
 import { ContentForm } from "@/app/components/ContentForm";
 
 export default async function NewContentPage() {
@@ -10,7 +10,7 @@ export default async function NewContentPage() {
     redirect("/sign-in");
   }
 
-  const role = await getRole();
+  const role = await getCurrentUserRole();
   if (!role) {
     redirect("/onboarding");
   }

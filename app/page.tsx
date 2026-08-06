@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { content } from "@/lib/db/schema";
-import { getRole } from "@/lib/roles";
+import { content, users } from "@/lib/db/schema";
+import { getCurrentUserRole } from "@/lib/db/users";
 
 export default async function Home() {
   const { userId } = await auth();
@@ -12,12 +12,21 @@ export default async function Home() {
     redirect("/sign-in");
   }
 
-  const role = await getRole();
+  const role = await getCurrentUserRole();
   if (!role) {
     redirect("/onboarding");
   }
 
-  const allContent = await db.select().from(content).orderBy(desc(content.createdAt));
+  const allContent = await db
+    .select({
+      id: content.id,
+      body: content.body,
+      createdAt: content.createdAt,
+      authorName: users.name,
+    })
+    .from(content)
+    .leftJoin(users, eq(content.authorId, users.id))
+    .orderBy(desc(content.createdAt));
 
   return (
     <main className="max-w-2xl w-full mx-auto px-4 py-10 flex-1">
@@ -41,7 +50,7 @@ export default async function Home() {
           <article key={item.id} className="border rounded p-4">
             <p className="whitespace-pre-wrap">{item.body}</p>
             <footer className="mt-2 text-sm text-gray-500">
-              {item.authorName} · {new Date(item.createdAt).toLocaleString()}
+              {item.authorName ?? "Unknown"} · {new Date(item.createdAt).toLocaleString()}
             </footer>
           </article>
         ))}

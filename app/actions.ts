@@ -1,9 +1,10 @@
 "use server";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { content } from "@/lib/db/schema";
+import { getOrCreateCurrentUser } from "@/lib/db/users";
 
 export type ContentFormState = {
   error?: string;
@@ -18,8 +19,8 @@ export async function createContent(
     return { error: "You must be signed in to post." };
   }
 
-  const user = await currentUser();
-  if (user?.publicMetadata.role !== "teacher") {
+  const user = await getOrCreateCurrentUser();
+  if (user?.role !== "teacher") {
     return { error: "Only teachers can post content." };
   }
 
@@ -28,13 +29,9 @@ export async function createContent(
     return { error: "Content cannot be empty." };
   }
 
-  const authorName =
-    user?.fullName ?? user?.username ?? user?.primaryEmailAddress?.emailAddress ?? "Teacher";
-
   await db.insert(content).values({
     body,
     authorId: userId,
-    authorName,
   });
 
   revalidatePath("/");

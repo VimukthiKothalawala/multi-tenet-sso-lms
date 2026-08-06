@@ -1,8 +1,11 @@
 "use server";
 
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import type { Role } from "@/lib/roles";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { getOrCreateCurrentUser, type Role } from "@/lib/db/users";
 
 export async function setRole(role: Role) {
   const { userId } = await auth();
@@ -10,10 +13,12 @@ export async function setRole(role: Role) {
     redirect("/sign-in");
   }
 
-  const client = await clerkClient();
-  await client.users.updateUserMetadata(userId, {
-    publicMetadata: { role },
-  });
+  const existing = await getOrCreateCurrentUser();
+  if (existing?.role) {
+    redirect("/");
+  }
+
+  await db.update(users).set({ role }).where(eq(users.id, userId));
 
   redirect("/");
 }
