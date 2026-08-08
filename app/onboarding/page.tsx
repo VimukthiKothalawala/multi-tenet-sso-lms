@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 import { getCurrentUserRole } from "@/lib/db/users";
+import { createClient } from "@/lib/supabase/server";
 import { setRole } from "./actions";
 
 export default async function OnboardingPage() {
-  const { userId } = await auth();
-  if (!userId) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     redirect("/sign-in");
   }
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
+import { AuthHeader } from "@/components/auth-header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,21 +25,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>
-          <header className="flex items-center justify-between px-4 py-3 border-b">
-            <span className="font-semibold">LMS</span>
-            <div className="flex items-center gap-3">
-              <Show when="signed-out">
-                <SignInButton />
-                <SignUpButton />
-              </Show>
-              <Show when="signed-in">
-                <UserButton />
-              </Show>
-            </div>
-          </header>
-          {children}
-        </ClerkProvider>
+        <header className="flex items-center justify-between px-4 py-3 border-b">
+          <span className="font-semibold">LMS</span>
+          <AuthHeader />
+        </header>
+        {children}
       </body>
     </html>
   );

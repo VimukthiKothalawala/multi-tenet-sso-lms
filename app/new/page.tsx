@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { getCurrentUserRole } from "@/lib/db/users";
 import { ContentForm } from "@/app/components/ContentForm";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function NewContentPage() {
-  const { userId } = await auth();
-  if (!userId) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     redirect("/sign-in");
   }
 

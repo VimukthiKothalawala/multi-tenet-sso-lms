@@ -1,37 +1,37 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users, type User } from "@/lib/db/schema";
+import { userRoles, type UserRole } from "@/lib/db/schema";
+import { createClient } from "@/lib/supabase/server";
 
 export type Role = "student" | "teacher";
 
 /**
- * Looks up the signed-in user's row, creating it on first sight.
- * Clerk only proves who the user is; this table is the source of truth for role/access.
+ * Looks up the signed-in user's role row, creating it on first sight.
+ * Supabase Auth is the source of truth for identity; this table only tracks role.
  */
-export async function getOrCreateCurrentUser(): Promise<User | null> {
-  const clerkUser = await currentUser();
-  if (!clerkUser) return null;
+export async function getOrCreateCurrentUserRole(): Promise<UserRole | null> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) return null;
 
-  const [existing] = await db.select().from(users).where(eq(users.id, clerkUser.id));
+  const [existing] = await db.select().from(userRoles).where(eq(userRoles.id, authUser.id));
   if (existing) return existing;
 
-  const email = clerkUser.primaryEmailAddress?.emailAddress ?? "";
-  const name = clerkUser.fullName ?? clerkUser.username ?? email;
-
   const [created] = await db
-    .insert(users)
-    .values({ id: clerkUser.id, email, name })
+    .insert(userRoles)
+    .values({ id: authUser.id })
     .onConflictDoNothing()
     .returning();
 
   if (created) return created;
 
-  const [row] = await db.select().from(users).where(eq(users.id, clerkUser.id));
+  const [row] = await db.select().from(userRoles).where(eq(userRoles.id, authUser.id));
   return row ?? null;
 }
 
 export async function getCurrentUserRole(): Promise<Role | null> {
-  const user = await getOrCreateCurrentUser();
-  return user?.role ?? null;
+  const row = await getOrCreateCurrentUserRole();
+  return row?.role ?? null;
 }

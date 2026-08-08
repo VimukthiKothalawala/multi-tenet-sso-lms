@@ -1,14 +1,17 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
-import { desc, eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { content, users } from "@/lib/db/schema";
+import { content } from "@/lib/db/schema";
 import { getCurrentUserRole } from "@/lib/db/users";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
-  const { userId } = await auth();
-  if (!userId) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     redirect("/sign-in");
   }
 
@@ -22,10 +25,8 @@ export default async function Home() {
       id: content.id,
       body: content.body,
       createdAt: content.createdAt,
-      authorName: users.name,
     })
     .from(content)
-    .leftJoin(users, eq(content.authorId, users.id))
     .orderBy(desc(content.createdAt));
 
   return (
@@ -50,7 +51,7 @@ export default async function Home() {
           <article key={item.id} className="border rounded p-4">
             <p className="whitespace-pre-wrap">{item.body}</p>
             <footer className="mt-2 text-sm text-gray-500">
-              {item.authorName ?? "Unknown"} · {new Date(item.createdAt).toLocaleString()}
+              {new Date(item.createdAt).toLocaleString()}
             </footer>
           </article>
         ))}

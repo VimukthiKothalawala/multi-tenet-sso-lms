@@ -1,24 +1,27 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { getOrCreateCurrentUser, type Role } from "@/lib/db/users";
+import { userRoles } from "@/lib/db/schema";
+import { getOrCreateCurrentUserRole, type Role } from "@/lib/db/users";
+import { createClient } from "@/lib/supabase/server";
 
 export async function setRole(role: Role) {
-  const { userId } = await auth();
-  if (!userId) {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) {
     redirect("/sign-in");
   }
 
-  const existing = await getOrCreateCurrentUser();
+  const existing = await getOrCreateCurrentUserRole();
   if (existing?.role) {
     redirect("/");
   }
 
-  await db.update(users).set({ role }).where(eq(users.id, userId));
+  await db.update(userRoles).set({ role }).where(eq(userRoles.id, authUser.id));
 
   redirect("/");
 }

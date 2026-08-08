@@ -1,10 +1,10 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { content } from "@/lib/db/schema";
-import { getOrCreateCurrentUser } from "@/lib/db/users";
+import { getOrCreateCurrentUserRole } from "@/lib/db/users";
+import { createClient } from "@/lib/supabase/server";
 
 export type ContentFormState = {
   error?: string;
@@ -14,13 +14,16 @@ export async function createContent(
   _prevState: ContentFormState,
   formData: FormData
 ): Promise<ContentFormState> {
-  const { userId } = await auth();
-  if (!userId) {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) {
     return { error: "You must be signed in to post." };
   }
 
-  const user = await getOrCreateCurrentUser();
-  if (user?.role !== "teacher") {
+  const userRole = await getOrCreateCurrentUserRole();
+  if (userRole?.role !== "teacher") {
     return { error: "Only teachers can post content." };
   }
 
@@ -31,7 +34,7 @@ export async function createContent(
 
   await db.insert(content).values({
     body,
-    authorId: userId,
+    authorId: authUser.id,
   });
 
   revalidatePath("/");
